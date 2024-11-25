@@ -145,7 +145,7 @@ class Parser:
 
     def parse(
         self,
-        date_time: str = "2024-11-24T00:00:00.000000+09:00",
+        datetime: str = "2024-11-24T00:00:00.000000+09:00",
         output_file_name: str = f"{os.path.dirname(__file__)}/../histories/histories.csv",
         sheet_name: str | None = None,
     ) -> None:
@@ -153,7 +153,7 @@ class Parser:
 
         # projectに紐付けられたすべてのsessionを取得する
         sessions = self.session_handler.get_sessions_created_after_given_datetime(
-            datetime=date_time
+            datetime=datetime
         )
 
         for session in tqdm(sessions, desc="Sessions"):
@@ -173,9 +173,9 @@ class Parser:
             # session.messagesに付随する情報を抽出する
             messages = session.get("messages")
             if agent_content_category == "prompt":
-                messages_rows = self.parse_general_messages(messages=messages)
-            elif agent_content_category == "general":
                 messages_rows = self.parse_prompt_messages(messages=messages)
+            elif agent_content_category == "general":
+                messages_rows = self.parse_general_messages(messages=messages)
             elif agent_content_category == "rag":
                 messages_rows = self.parse_rag_messages(messages=messages)
             else:
