@@ -21,12 +21,12 @@ logger.addHandler(stream_handler)
 class AgentHandler:
     def __init__(
         self,
-        host_url: str = "http://localhost:8000",
+        origin: str = "http://localhost:8000",
         id="admin",
         password="password",
         project_id="631a6a99-0b30-425a-bdf2-af4532ff9451",
     ):
-        self.host_url = host_url
+        self.origin = origin
         self.id = id
         self.password = password
         self.project_id = project_id
@@ -41,14 +41,14 @@ class AgentHandler:
 
     def get_agent(self, agent_id: str):
         response = requests.get(
-            f"{self.host_url}/api/genai/v1/projects/{self.project_id}/agents/{agent_id}",
+            f"{self.origin}/api/genai/v1/projects/{self.project_id}/agents/{agent_id}",
             auth=self.authorization,
         )
         return self.return_json_or_raise_exception(response=response)
 
     def get_agents(self):
         response = requests.get(
-            f"{self.host_url}/api/genai/v1/projects/{self.project_id}/agents",
+            f"{self.origin}/api/genai/v1/projects/{self.project_id}/agents",
             auth=self.authorization,
         )
         return self.return_json_or_raise_exception(response=response)
@@ -56,7 +56,7 @@ class AgentHandler:
     def create_agent(self, name: str, type: str, context: dict):
         data = {"name": name, "type": type, "context": context}
         response = requests.post(
-            f"{self.host_url}/api/genai/v1/projects/{self.project_id}/agents",
+            f"{self.origin}/api/genai/v1/projects/{self.project_id}/agents",
             auth=self.authorization,
             data=json.dump(data),
         )
@@ -64,7 +64,7 @@ class AgentHandler:
 
     def delete_agent(self, agent_id: str):
         response = requests.delete(
-            f"{self.host_url}/api/genai/v1/projects/{self.project_id}/agents/{agent_id}",
+            f"{self.origin}/api/genai/v1/projects/{self.project_id}/agents/{agent_id}",
             auth=self.authorization,
         )
         return self.return_json_or_raise_exception(response=response)

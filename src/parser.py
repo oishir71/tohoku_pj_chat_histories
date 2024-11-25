@@ -1,4 +1,5 @@
 import os
+import sys
 from tqdm import tqdm
 import pandas as pd
 from datetime import datetime
@@ -19,35 +20,63 @@ logger.addHandler(stream_handler)
 from session_handler import SessionHandler
 from agent_handler import AgentHandler
 
+import argparse
+
+parser = argparse.ArgumentParser(description="Parse chat histories for tohoku PJ")
+parser.add_argument("--origin", dest="origin", help="Origin of softreef", type=str)
+parser.add_argument("--user_id", dest="user_id", help="User id", type=str)
+parser.add_argument("--password", dest="password", help="Password", type=str)
+parser.add_argument("--project_id", dest="project_id", help="Project Id", type=str)
+args = parser.parse_args()
+
 
 class Parser:
     def __init__(
         self,
-        host_url: str = "http://localhost:8000",
-        id="admin",
-        password="password",
-        project_id="631a6a99-0b30-425a-bdf2-af4532ff9451",
-    ):
-        self.host_url = host_url
-        self.id = id
-        self.password = password
-        self.project_id = project_id
+        origin: str = "http://localhost:8000",
+        id: str = "admin",
+        password: str = "password",
+        project_id: str = "631a6a99-0b30-425a-bdf2-af4532ff9451",
+    ) -> None:
+        self.origin = self._get_candidate(
+            candidates=[args.origin, os.environ.get("TOHOKU_ORIGIN"), origin]
+        )
+        self.id = self._get_candidate(
+            candidates=[args.user_id, os.environ.get("TOHOKU_USER_ID"), id]
+        )
+        self.password = self._get_candidate(
+            candidates=[args.password, os.environ.get("TOHOKU_PASSWORD"), password]
+        )
+        self.project_id = self._get_candidate(
+            candidates=[
+                args.project_id,
+                os.environ.get("TOHOKU_PROJECT_ID"),
+                project_id,
+            ]
+        )
         self.authorization = (self.id, self.password)
 
         self.session_handler = SessionHandler(
-            host_url=self.host_url,
+            origin=self.origin,
             id=self.id,
             password=self.password,
             project_id=self.project_id,
         )
         self.agent_handler = AgentHandler(
-            host_url=self.host_url,
+            origin=self.origin,
             id=self.id,
             password=self.password,
             project_id=self.project_id,
         )
 
-    def parse_general_messages(self, messages: list):
+    def _get_candidate(self, candidates: list) -> str:
+        for candidate in candidates:
+            if not candidate is None:
+                return candidate
+        logger.error("No given candidate has valid value.")
+        raise Exception
+
+    def parse_general_messages(self, messages: list) -> pd.DataFrame:
         """
         Is is assumed that "messages" are archived in such a way that the following conditions are met.
         - A user message and a response from the LLM.
@@ -76,7 +105,7 @@ class Parser:
 
         return general_message_rows
 
-    def parse_prompt_messages(self, messages: list):
+    def parse_prompt_messages(self, messages: list) -> pd.DataFrame:
         """
         It is assumed that "messages" are archived in such a way that the following conditions are met.
         - The first is a message that is applied to the entire session specified by the user.
@@ -108,7 +137,7 @@ class Parser:
 
         return prompt_message_rows
 
-    def parse_rag_messages(self, messages: list):
+    def parse_rag_messages(self, messages: list) -> pd.DataFrame:
         """
         it is assumed that "messages" are archived in such a way that the following conditions are met.
         - The first is a message that is applied to the entire session specified by the user.
