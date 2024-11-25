@@ -179,13 +179,13 @@ class Parser:
     ) -> None:
         data_frame = pd.DataFrame()
 
-        # projectに紐付けられたすべてのsessionを取得する
+        # Retrieve all sessions associated with the project
         sessions = self.session_handler.get_sessions_created_after_given_datetime(
             datetime=start_datetime
         )
 
         for session in tqdm(sessions, desc="Sessions"):
-            # agentに付随する情報を抽出する
+            # Retrieve agent id from each session
             agent_id = session.get("agent")
             agent = self.agent_handler.get_agent(agent_id=agent_id)
             agent_name = agent.get("name")
@@ -194,11 +194,11 @@ class Parser:
             agent_context_description = agent.get("context").get("description")
             agent_context_source_text = agent.get("context").get("source_text")
 
-            # sessionに付随する情報を抽出する
+            # Retrieve information associated with the current session
             session_name = session.get("name")
             session_created_user_name = session.get("created_user_name")
 
-            # session.messagesに付随する情報を抽出する
+            # Retrieve messages associated with the current session
             messages = session.get("messages")
             if agent_context_category == "prompt":
                 messages_rows = self.parse_prompt_messages(messages=messages)
