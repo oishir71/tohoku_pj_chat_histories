@@ -161,9 +161,9 @@ class Parser:
             agent = self.agent_handler.get_agent(agent_id=agent_id)
             agent_name = agent.get("name")
             agent_type = agent.get("type")
-            agent_content_category = agent.get("context").get("category")
-            agent_content_description = agent.get("context").get("description")
-            agent_content_source_text = agent.get("context").get("source_text")
+            agent_context_category = agent.get("context").get("category")
+            agent_context_description = agent.get("context").get("description")
+            agent_context_source_text = agent.get("context").get("source_text")
 
             # sessionに付随する情報を抽出する
             session_name = session.get("name")
@@ -171,15 +171,15 @@ class Parser:
 
             # session.messagesに付随する情報を抽出する
             messages = session.get("messages")
-            if agent_content_category == "prompt":
+            if agent_context_category == "prompt":
                 messages_rows = self.parse_prompt_messages(messages=messages)
-            elif agent_content_category == "general":
+            elif agent_context_category == "general":
                 messages_rows = self.parse_general_messages(messages=messages)
-            elif agent_content_category == "rag":
+            elif agent_context_category == "rag":
                 messages_rows = self.parse_rag_messages(messages=messages)
             else:
                 logger.error(
-                    f'Even one of the ["prompt", "general", "rag"] is available as a message category, "{agent_content_category}" was detected.\nPlease configure your agent properly. Following categories are supported.'
+                    f'Even one of the ["prompt", "general", "rag"] is available as a message category, "{agent_context_category}" was detected.\nPlease configure your agent properly. Following categories are supported.'
                 )
                 continue
 
@@ -189,9 +189,9 @@ class Parser:
                         **{
                             "agent_name": agent_name,
                             "agent_type": agent_type,
-                            "agent_content_category": agent_content_category,
-                            "agent_content_description": agent_content_description,
-                            "agent_content_source_text": agent_content_source_text,
+                            "agent_context_category": agent_context_category,
+                            "agent_context_description": agent_context_description,
+                            "agent_context_source_text": agent_context_source_text,
                             "session_name": session_name,
                             "session_created_user_name": session_created_user_name,
                         },
