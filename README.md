@@ -11,13 +11,8 @@ cd path/to/root/directory
 pip install -r requirements.txt
 ```
 
-その後、`src directory`に移動していただき、`parser.py`を実行してください。
+その後、以下の環境変数を設定し、`src directory`に移動していただき、`parser.py`を実行してください。デフォルトでは、`root_directory/histories/sessions.csv`が生成されます。
 
-```bash
-python parser.py
-```
-
-ただし、以下の環境変が適切に設定されている必要があります。
 | 環境変数 | 何者か | 具体例 |
 | -- | -- | -- |
 | TOHOKU_ORIGIN | オリジン | localhost:8000 |
@@ -25,17 +20,22 @@ python parser.py
 | TOHOKU_PASSWORD | ユーザーに設定されているパスワード | password |
 | TOHOKU_PROJECT_ID | プロジェクトのID | 631a6a99-0b30-425a-bdf2-af4532ff9451 |
 
-また、引数を用いて上記の環境変数を上書きすることも可能です。
+```bash
+python parser.py
+```
+
+また、引数を用いて上記の環境変数を上書きすることも可能です。出力するファイル形式は2024/11/25現在`csv`または`xlsx`のみに限られることをご留意ください。
 ```bash
 python parser.py \
   --origin https://console.dev.softreef-ai.com \
   --user_id oishir71 \
   --password piyopiyo \
-  --project_id ea0ab6c4-212f-431a-82e9-caa2c11f4594
+  --project_id ea0ab6c4-212f-431a-82e9-caa2c11f4594 \
+  --output_file_name root_directory/histories/sessions.xlsx
 ```
 
 ## What information is retrieved
-生成されるファイルは以下の情報が含まれます。各行はユーザーとLLMのやり取りのうち1ラリー分に相当し、複数回やりとりが発生したセッションについては複数行に跨って記録されています。
+生成されるファイルは以下の情報が含まれます。各行はユーザーとLLMのやり取りの内1ラリー分に相当し、複数回ラリーが発生したセッションについては複数行に跨って記録されています。
 | カラム名 | 実態 | 存在 |
 | -- | -- | -- |
 | agent_name | エージェント名 | 必ず |
