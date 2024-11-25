@@ -1,8 +1,6 @@
 import os
-import sys
 import pprint
 import requests
-from datetime import date, datetime
 from dateutil import parser
 
 # Logging

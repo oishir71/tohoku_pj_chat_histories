@@ -1,8 +1,7 @@
 import os
-import sys
-import pprint
 from tqdm import tqdm
 import pandas as pd
+from datetime import datetime
 
 # Logging
 import logging
@@ -59,11 +58,11 @@ class Parser:
             new_row = pd.DataFrame(
                 {
                     "session_message_timestamp": messages[i_start].get("timestamp"),
-                    "session_message_system_content_text": "",  # For consistency
+                    "session_message_system_content_text": None,  # For consistency
                     "session_message_user_content_text": messages[i_start]
                     .get("content")[0]
                     .get("text"),  # Message with "role" = "user"
-                    "session_message_rag_content_text": "",  # For consistency
+                    "session_message_rag_content_text": None,  # For consistency
                     "session_message_assistant_content_text": messages[i_start + 1]
                     .get("content")[0]
                     .get("text"),  # Message with "role" = "assistant"
@@ -95,7 +94,7 @@ class Parser:
                     "session_message_user_content_text": messages[i_start]
                     .get("content")[0]
                     .get("text"),  # Message with "role" = "user"
-                    "session_message_rag_content_text": "",  # For consistency
+                    "session_message_rag_content_text": None,  # For consistency
                     "session_message_assistant_content_text": messages[i_start + 1]
                     .get("content")[0]
                     .get("text"),  # Message with "role" = "assistant"
@@ -145,7 +144,7 @@ class Parser:
 
     def parse(
         self,
-        datetime: str = "2024-11-24T00:00:00.000000+09:00",
+        start_datetime: str = "2024-11-24T00:00:00.000000+09:00",
         output_file_name: str = f"{os.path.dirname(__file__)}/../histories/histories.csv",
         sheet_name: str | None = None,
     ) -> None:
@@ -153,7 +152,7 @@ class Parser:
 
         # projectに紐付けられたすべてのsessionを取得する
         sessions = self.session_handler.get_sessions_created_after_given_datetime(
-            datetime=datetime
+            datetime=start_datetime
         )
 
         for session in tqdm(sessions, desc="Sessions"):
@@ -207,7 +206,12 @@ class Parser:
 
         format = output_file_name.split(".")[-1]
         if format == "xlsx":
-            with pd.ExcelWriter(output_file_name) as writer:
+            sheet_name = (
+                datetime.now().strftime("%Y-%m-%d")
+                if sheet_name is None
+                else sheet_name
+            )
+            with pd.ExcelWriter(output_file_name, engine="openpyxl") as writer:
                 data_frame.to_excel(writer, sheet_name=sheet_name)
         if format == "csv":
             data_frame.to_csv(output_file_name, index=False)
@@ -218,5 +222,5 @@ class Parser:
 if __name__ == "__main__":
     parser = Parser()
     parser.parse(
-        output_file_name=f"{os.path.dirname(__file__)}/../histories/sessions.csv"
+        output_file_name=f"{os.path.dirname(__file__)}/../histories/sessions.xlsx"
     )
