@@ -27,6 +27,12 @@ parser.add_argument("--origin", dest="origin", help="Origin of softreef", type=s
 parser.add_argument("--user_id", dest="user_id", help="User id", type=str)
 parser.add_argument("--password", dest="password", help="Password", type=str)
 parser.add_argument("--project_id", dest="project_id", help="Project Id", type=str)
+parser.add_argument(
+    "--output_file_name",
+    dest="output_file_name",
+    help="Output file name",
+    type=str,
+)
 args = parser.parse_args()
 
 
@@ -230,6 +236,9 @@ class Parser:
                 )
                 data_frame = pd.concat([data_frame, new_row], ignore_index=True)
 
+        output_file_name = self._get_candidate(
+            candidates=[args.output_file_name, output_file_name]
+        )
         if not os.path.exists(os.path.dirname(output_file_name)):
             os.makedirs(os.path.dirname(output_file_name), exist_ok=False)
 
