@@ -1,4 +1,5 @@
 import os
+import re
 import pprint
 import requests
 from dateutil import parser
@@ -57,11 +58,49 @@ class SessionHandler:
         sorted_sessions = sorted(sessions, key=lambda x: x[sorted_by])
         return sorted_sessions
 
-    def get_sessions_created_after_given_datetime(self, datetime: str):
+    def get_filtered_sessions(
+        self,
+        excluded_user_name_regexes: list = [],
+        start_datetime: str = "2000-12-31T00:00:00.000000+09:00",
+        end_datetime: str = "2100-12-31T00:00:00.000000+09:00",
+    ):
+        sessions = self.get_sessions()
+        sessions = self.get_filtered_sessions_by_user_name(
+            sessions=sessions, excluded_user_name_regexes=excluded_user_name_regexes
+        )
+        sessions = self.get_filtered_sessions_by_datetime(
+            sessions=sessions, start_datetime=start_datetime, end_datetime=end_datetime
+        )
+
+        return sessions
+
+    def get_filtered_sessions_by_user_name(
+        self, sessions: list, excluded_user_name_regexes: list = []
+    ):
+        filtered_sessions = []
+        for session in sessions:
+            exclude = False
+            create_user_name = session.get("created_user_name")
+            for regex in excluded_user_name_regexes:
+                if re.match(regex, create_user_name):
+                    exclude = True
+                    break
+            if not exclude:
+                filtered_sessions.append(session)
+
+        return filtered_sessions
+
+    def get_filtered_sessions_by_datetime(
+        self,
+        sessions: list,
+        start_datetime: str = "2000-12-31T00:00:00.000000+09:00",
+        end_datetime: str = "2100-12-31T00:00:00.000000+09:00",
+    ):
         return [
             session
-            for session in self.get_sessions()
-            if parser.parse(datetime) < parser.parse(session.get("created_at"))
+            for session in sessions
+            if parser.parse(start_datetime) < parser.parse(session.get("created_at"))
+            and parser.parse(session.get("created_at")) < parser.parse(end_datetime)
         ]
 
     def get_messages(self, session_id: str):

@@ -75,6 +75,17 @@ class Parser:
             project_id=self.project_id,
         )
 
+    def get_text_or_default(
+        self, messages: list, index: int, default: str | None = None
+    ):
+        if len(messages) > index:
+            return messages[index].get("content")[0].get("text")
+        else:
+            logger.warning(
+                f"The length of given messages ({len(messages)}) was shorter than the index ({index+1}) which you tried to retrieve."
+            )
+            return default
+
     def parse_general_messages(self, messages: list) -> pd.DataFrame:
         """
         Is is assumed that "messages" are archived in such a way that the following conditions are met.
@@ -87,13 +98,13 @@ class Parser:
                 {
                     "セッション作成日時": messages[i_start].get("timestamp"),
                     "エージェントの入力": None,  # For consistency
-                    "ユーザーの入力": messages[i_start]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "user"
+                    "ユーザーの入力": self.get_text_or_default(
+                        messages=messages, index=i_start
+                    ),  # Message with "role" = "user"
                     "RAGテキスト": None,  # For consistency
-                    "LLMからの回答": messages[i_start + 1]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "assistant"
+                    "LLMからの回答": self.get_text_or_default(
+                        messages=messages, index=i_start + 1
+                    ),  # Message with "role" = "assistant"
                 },
                 index=[len(general_message_rows)],
             )
@@ -116,16 +127,16 @@ class Parser:
             new_row = pd.DataFrame(
                 {
                     "セッション作成日時": messages[i_start].get("timestamp"),
-                    "エージェントの入力": messages[0]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "system"
-                    "ユーザーの入力": messages[i_start]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "user"
+                    "エージェントの入力": self.get_text_or_default(
+                        messages=messages, index=0
+                    ),  # Message with "role" = "system"
+                    "ユーザーの入力": self.get_text_or_default(
+                        messages=messages, index=i_start
+                    ),  # Message with "role" = "user"
                     "RAGテキスト": None,  # For consistency
-                    "LLMからの回答": messages[i_start + 1]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "assistant"
+                    "LLMからの回答": self.get_text_or_default(
+                        messages=messages, index=i_start + 1
+                    ),  # Message with "role" = "assistant"
                 },
                 index=[len(prompt_message_rows)],
             )
@@ -148,18 +159,18 @@ class Parser:
             new_row = pd.DataFrame(
                 {
                     "セッション作成日時": messages[i_start].get("timestamp"),
-                    "エージェントの入力": messages[0]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "system"
-                    "ユーザーの入力": messages[i_start]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "user"
-                    "RAGテキスト": messages[i_start + 1]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "system"
-                    "LLMからの回答": messages[i_start + 2]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "assistant"
+                    "エージェントの入力": self.get_text_or_default(
+                        messages=messages, index=0
+                    ),  # Message with "role" = "system"
+                    "ユーザーの入力": self.get_text_or_default(
+                        messages=messages, index=i_start
+                    ),  # Message with "role" = "user"
+                    "RAGテキスト": self.get_text_or_default(
+                        messages=messages, index=i_start + 1
+                    ),  # Message with "role" = "system"
+                    "LLMからの回答": self.get_text_or_default(
+                        messages=messages, index=i_start + 2
+                    ),  # Message with "role" = "assistant"
                 },
                 index=[len(rag_messages_rows)],
             )
@@ -173,13 +184,17 @@ class Parser:
     def parse(
         self,
         save_all_information: bool = False,
+        excluded_user: list = [],
         start_datetime: str = "2024-11-24T00:00:00.000000+09:00",
+        end_datetime: str = "2030-11-24T00:00:00.000000+09:00",
     ) -> pd.DataFrame:
         data_frame = pd.DataFrame()
 
         # Retrieve all sessions associated with the project
-        sessions = self.session_handler.get_sessions_created_after_given_datetime(
-            datetime=start_datetime
+        sessions = self.session_handler.get_filtered_sessions(
+            excluded_user_name_regexes=excluded_user,
+            start_datetime=start_datetime,
+            end_datetime=end_datetime,
         )
 
         for session in tqdm(sessions, desc="Sessions"):
@@ -293,6 +308,7 @@ if __name__ == "__main__":
     )
     data_frame = parser.parse(
         save_all_information=False,
+        excluded_user=[r"admin", r"[a-zA-Z0-9.]+@g.softbank.co.jp"],
         start_datetime="2024-11-24T00:00:00.000000+09:00",
     )
     parser.save_parsed_result(
