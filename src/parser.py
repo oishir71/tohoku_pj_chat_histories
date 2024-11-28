@@ -174,9 +174,7 @@ class Parser:
         self,
         save_all_information: bool = False,
         start_datetime: str = "2024-11-24T00:00:00.000000+09:00",
-        output_file_name: str = f"{os.path.dirname(__file__)}/../histories/histories.csv",
-        sheet_name: str | None = None,
-    ) -> None:
+    ) -> pd.DataFrame:
         data_frame = pd.DataFrame()
 
         # Retrieve all sessions associated with the project
@@ -211,7 +209,7 @@ class Parser:
                 messages_rows = self.parse_rag_messages(messages=messages)
             else:
                 logger.error(
-                    f'Even one of the ["prompt", "general", "rag"] is available as a message category, "{agent_context_category}" was detected.\nPlease configure your agent properly. Following categories are supported.'
+                    f'Although one of the ["prompt", "general", "rag"] is available as a message category, "{agent_context_category}" was detected.\nPlease configure your agent properly. Following categories are supported.'
                 )
                 continue
 
@@ -230,18 +228,28 @@ class Parser:
                     index=[len(data_frame)],
                 )
                 if save_all_information:
-                    new_row.update(
+                    _new_row = pd.DataFrame(
                         {
                             "エージェントタイプ": agent_type,
                             "エージェント種目": agent_context_category,
                             "エージェントに対する説明": agent_context_description,
                             "エージェントに付随するソーステキスト": agent_context_source_text,
                             "セッション名": session_name,
-                        }
+                        },
+                        index=[len(data_frame)],
                     )
+                    new_row = pd.concat([new_row, _new_row], axis=1)
 
                 data_frame = pd.concat([data_frame, new_row], ignore_index=True)
 
+        return data_frame
+
+    def save_parsed_result(
+        self,
+        data_frame: pd.DataFrame,
+        output_file_name: str = f"{os.path.dirname(__file__)}/../histories/histories.csv",
+        sheet_name: str | None = None,
+    ):
         if not os.path.exists(os.path.dirname(output_file_name)):
             os.makedirs(os.path.dirname(output_file_name), exist_ok=False)
 
@@ -283,9 +291,12 @@ if __name__ == "__main__":
             ]
         ),
     )
-    parser.parse(
+    data_frame = parser.parse(
         save_all_information=False,
         start_datetime="2024-11-24T00:00:00.000000+09:00",
+    )
+    parser.save_parsed_result(
+        data_frame=data_frame,
         output_file_name=get_prior_candidate(
             candidates=[
                 args.output_file_name,
