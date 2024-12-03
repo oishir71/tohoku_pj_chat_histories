@@ -36,6 +36,18 @@ parser.add_argument(
 args = parser.parse_args()
 
 
+def get_prior_candidate(candidates: list) -> str:
+    """
+    Arrange the candidates in the order of priority.
+    Return the first alive candidate.
+    """
+    for candidate in candidates:
+        if not candidate is None:
+            return candidate
+    logger.error("No given candidate had valid value.")
+    raise Exception
+
+
 class Parser:
     def __init__(
         self,
@@ -44,22 +56,10 @@ class Parser:
         password: str = "password",
         project_id: str = "631a6a99-0b30-425a-bdf2-af4532ff9451",
     ) -> None:
-        self.origin = self._get_candidate(
-            candidates=[args.origin, os.environ.get("TOHOKU_ORIGIN"), origin]
-        )
-        self.id = self._get_candidate(
-            candidates=[args.user_id, os.environ.get("TOHOKU_USER_ID"), id]
-        )
-        self.password = self._get_candidate(
-            candidates=[args.password, os.environ.get("TOHOKU_PASSWORD"), password]
-        )
-        self.project_id = self._get_candidate(
-            candidates=[
-                args.project_id,
-                os.environ.get("TOHOKU_PROJECT_ID"),
-                project_id,
-            ]
-        )
+        self.origin = origin
+        self.id = id
+        self.password = password
+        self.project_id = project_id
         self.authorization = (self.id, self.password)
 
         self.session_handler = SessionHandler(
@@ -75,12 +75,16 @@ class Parser:
             project_id=self.project_id,
         )
 
-    def _get_candidate(self, candidates: list) -> str:
-        for candidate in candidates:
-            if not candidate is None:
-                return candidate
-        logger.error("No given candidate has valid value.")
-        raise Exception
+    def get_text_or_default(
+        self, messages: list, index: int, default: str | None = None
+    ):
+        if len(messages) > index:
+            return messages[index].get("content")[0].get("text")
+        else:
+            logger.warning(
+                f"The length of given messages ({len(messages)}) was shorter than the index ({index+1}) which you tried to retrieve."
+            )
+            return default
 
     def parse_general_messages(self, messages: list) -> pd.DataFrame:
         """
@@ -92,15 +96,15 @@ class Parser:
         for i_start in range(0, len(messages), 2):
             new_row = pd.DataFrame(
                 {
-                    "session_message_timestamp": messages[i_start].get("timestamp"),
-                    "session_message_system_content_text": None,  # For consistency
-                    "session_message_user_content_text": messages[i_start]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "user"
-                    "session_message_rag_content_text": None,  # For consistency
-                    "session_message_assistant_content_text": messages[i_start + 1]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "assistant"
+                    "セッション作成日時": messages[i_start].get("timestamp"),
+                    "エージェントの入力": None,  # For consistency
+                    "ユーザーの入力": self.get_text_or_default(
+                        messages=messages, index=i_start
+                    ),  # Message with "role" = "user"
+                    "RAGテキスト": None,  # For consistency
+                    "LLMからの回答": self.get_text_or_default(
+                        messages=messages, index=i_start + 1
+                    ),  # Message with "role" = "assistant"
                 },
                 index=[len(general_message_rows)],
             )
@@ -122,17 +126,17 @@ class Parser:
         for i_start in range(1, len(messages), 2):
             new_row = pd.DataFrame(
                 {
-                    "session_message_timestamp": messages[i_start].get("timestamp"),
-                    "session_message_system_content_text": messages[0]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "system"
-                    "session_message_user_content_text": messages[i_start]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "user"
-                    "session_message_rag_content_text": None,  # For consistency
-                    "session_message_assistant_content_text": messages[i_start + 1]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "assistant"
+                    "セッション作成日時": messages[i_start].get("timestamp"),
+                    "エージェントの入力": self.get_text_or_default(
+                        messages=messages, index=0
+                    ),  # Message with "role" = "system"
+                    "ユーザーの入力": self.get_text_or_default(
+                        messages=messages, index=i_start
+                    ),  # Message with "role" = "user"
+                    "RAGテキスト": None,  # For consistency
+                    "LLMからの回答": self.get_text_or_default(
+                        messages=messages, index=i_start + 1
+                    ),  # Message with "role" = "assistant"
                 },
                 index=[len(prompt_message_rows)],
             )
@@ -154,19 +158,19 @@ class Parser:
         for i_start in range(1, len(messages), 3):
             new_row = pd.DataFrame(
                 {
-                    "session_message_timestamp": messages[i_start].get("timestamp"),
-                    "session_message_system_content_text": messages[0]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "system"
-                    "session_message_user_content_text": messages[i_start]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "user"
-                    "session_message_rag_content_text": messages[i_start + 1]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "system"
-                    "session_message_assistant_content_text": messages[i_start + 2]
-                    .get("content")[0]
-                    .get("text"),  # Message with "role" = "assistant"
+                    "セッション作成日時": messages[i_start].get("timestamp"),
+                    "エージェントの入力": self.get_text_or_default(
+                        messages=messages, index=0
+                    ),  # Message with "role" = "system"
+                    "ユーザーの入力": self.get_text_or_default(
+                        messages=messages, index=i_start
+                    ),  # Message with "role" = "user"
+                    "RAGテキスト": self.get_text_or_default(
+                        messages=messages, index=i_start + 1
+                    ),  # Message with "role" = "system"
+                    "LLMからの回答": self.get_text_or_default(
+                        messages=messages, index=i_start + 2
+                    ),  # Message with "role" = "assistant"
                 },
                 index=[len(rag_messages_rows)],
             )
@@ -179,15 +183,18 @@ class Parser:
 
     def parse(
         self,
+        save_all_information: bool = False,
+        excluded_user: list = [],
         start_datetime: str = "2024-11-24T00:00:00.000000+09:00",
-        output_file_name: str = f"{os.path.dirname(__file__)}/../histories/histories.csv",
-        sheet_name: str | None = None,
-    ) -> None:
+        end_datetime: str = "2030-11-24T00:00:00.000000+09:00",
+    ) -> pd.DataFrame:
         data_frame = pd.DataFrame()
 
         # Retrieve all sessions associated with the project
-        sessions = self.session_handler.get_sessions_created_after_given_datetime(
-            datetime=start_datetime
+        sessions = self.session_handler.get_filtered_sessions(
+            excluded_user_name_regexes=excluded_user,
+            start_datetime=start_datetime,
+            end_datetime=end_datetime,
         )
 
         for session in tqdm(sessions, desc="Sessions"):
@@ -199,10 +206,13 @@ class Parser:
             agent_context_category = agent.get("context").get("category")
             agent_context_description = agent.get("context").get("description")
             agent_context_source_text = agent.get("context").get("source_text")
+            agent_context_rag_dataset_id = agent.get("context").get("rag_dataset_id")
 
             # Retrieve information associated with the current session
+            session_id = session.get("id")
             session_name = session.get("name")
             session_created_user_name = session.get("created_user_name")
+            session_state_feedback = session.get("state").get("feedback")
 
             # Retrieve messages associated with the current session
             messages = session.get("messages")
@@ -214,7 +224,7 @@ class Parser:
                 messages_rows = self.parse_rag_messages(messages=messages)
             else:
                 logger.error(
-                    f'Even one of the ["prompt", "general", "rag"] is available as a message category, "{agent_context_category}" was detected.\nPlease configure your agent properly. Following categories are supported.'
+                    f'Although one of the ["prompt", "general", "rag"] is available as a message category, "{agent_context_category}" was detected.\nPlease configure your agent properly. Following categories are supported.'
                 )
                 continue
 
@@ -222,23 +232,39 @@ class Parser:
                 new_row = pd.DataFrame(
                     {
                         **{
-                            "agent_name": agent_name,
-                            "agent_type": agent_type,
-                            "agent_context_category": agent_context_category,
-                            "agent_context_description": agent_context_description,
-                            "agent_context_source_text": agent_context_source_text,
-                            "session_name": session_name,
-                            "session_created_user_name": session_created_user_name,
+                            "エージェントモード": agent_name,
+                            "セッションID": session_id,
+                            "セッション作成者": session_created_user_name,
+                            "RAGデータセットID": agent_context_rag_dataset_id,
+                            "評価": session_state_feedback,
                         },
                         **{key: value for key, value in row.items()},
                     },
                     index=[len(data_frame)],
                 )
+                if save_all_information:
+                    _new_row = pd.DataFrame(
+                        {
+                            "エージェントタイプ": agent_type,
+                            "エージェント種目": agent_context_category,
+                            "エージェントに対する説明": agent_context_description,
+                            "エージェントに付随するソーステキスト": agent_context_source_text,
+                            "セッション名": session_name,
+                        },
+                        index=[len(data_frame)],
+                    )
+                    new_row = pd.concat([new_row, _new_row], axis=1)
+
                 data_frame = pd.concat([data_frame, new_row], ignore_index=True)
 
-        output_file_name = self._get_candidate(
-            candidates=[args.output_file_name, output_file_name]
-        )
+        return data_frame
+
+    def save_parsed_result(
+        self,
+        data_frame: pd.DataFrame,
+        output_file_name: str = f"{os.path.dirname(__file__)}/../histories/histories.csv",
+        sheet_name: str | None = None,
+    ):
         if not os.path.exists(os.path.dirname(output_file_name)):
             os.makedirs(os.path.dirname(output_file_name), exist_ok=False)
 
@@ -258,7 +284,39 @@ class Parser:
 
 
 if __name__ == "__main__":
-    parser = Parser()
-    parser.parse(
-        output_file_name=f"{os.path.dirname(__file__)}/../histories/sessions.xlsx"
+    parser = Parser(
+        origin=get_prior_candidate(
+            candidates=[
+                args.origin,
+                os.environ.get("TOHOKU_ORIGIN"),
+                "http://localhost:8000",
+            ]
+        ),
+        id=get_prior_candidate(
+            candidates=[args.user_id, os.environ.get("TOHOKU_USER_ID"), "admin"]
+        ),
+        password=get_prior_candidate(
+            candidates=[args.password, os.environ.get("TOHOKU_PASSWORD"), "password"]
+        ),
+        project_id=get_prior_candidate(
+            candidates=[
+                args.project_id,
+                os.environ.get("TOHOKU_PROJECT_ID"),
+                "631a6a99-0b30-425a-bdf2-af4532ff9451",
+            ]
+        ),
+    )
+    data_frame = parser.parse(
+        save_all_information=False,
+        excluded_user=[r"admin", r"[a-zA-Z0-9.]+@g.softbank.co.jp"],
+        start_datetime="2024-11-24T00:00:00.000000+09:00",
+    )
+    parser.save_parsed_result(
+        data_frame=data_frame,
+        output_file_name=get_prior_candidate(
+            candidates=[
+                args.output_file_name,
+                f"{os.path.dirname(__file__)}/../histories/sessions.csv",
+            ]
+        ),
     )
